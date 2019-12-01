@@ -1,10 +1,12 @@
 package com.scanner.demo;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
@@ -18,9 +20,12 @@ import com.scanlibrary.ScanActivity;
 import com.scanlibrary.ScanConstants;
 
 import java.io.IOException;
+import java.util.List;
+
+import pub.devrel.easypermissions.EasyPermissions;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements EasyPermissions.PermissionCallbacks {
 
     private static final int REQUEST_CODE = 99;
     private Button scanButton;
@@ -35,37 +40,53 @@ public class MainActivity extends AppCompatActivity {
         init();
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        // Forward results to EasyPermissions
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+    }
+
+    @Override
+    public void onPermissionsGranted(int requestCode, List<String> list) {
+        // Some permissions have been granted
+        // ...
+        startScanGo(requestCode);
+    }
+
+    @Override
+    public void onPermissionsDenied(int requestCode, List<String> list) {
+        // Some permissions have been denied
+        // ...
+    }
+
     private void init() {
-        scanButton = (Button) findViewById(R.id.scanButton);
+        scanButton = findViewById(R.id.scanButton);
         scanButton.setOnClickListener(new ScanButtonClickListener());
-        cameraButton = (Button) findViewById(R.id.cameraButton);
+        cameraButton = findViewById(R.id.cameraButton);
         cameraButton.setOnClickListener(new ScanButtonClickListener(ScanConstants.OPEN_CAMERA));
-        mediaButton = (Button) findViewById(R.id.mediaButton);
+        mediaButton = findViewById(R.id.mediaButton);
         mediaButton.setOnClickListener(new ScanButtonClickListener(ScanConstants.OPEN_MEDIA));
-        scannedImageView = (ImageView) findViewById(R.id.scannedImage);
+        scannedImageView = findViewById(R.id.scannedImage);
     }
 
-    private class ScanButtonClickListener implements View.OnClickListener {
-
-        private int preference;
-
-        public ScanButtonClickListener(int preference) {
-            this.preference = preference;
-        }
-
-        public ScanButtonClickListener() {
-        }
-
-        @Override
-        public void onClick(View v) {
-            startScan(preference);
-        }
-    }
-
-    protected void startScan(int preference) {
+    private void startScanGo(final int preference) {
         Intent intent = new Intent(this, ScanActivity.class);
         intent.putExtra(ScanConstants.OPEN_INTENT_PREFERENCE, preference);
         startActivityForResult(intent, REQUEST_CODE);
+    }
+
+    protected void startScan(int preference) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            EasyPermissions.requestPermissions(
+                    this,
+                    "申请权限",
+                    preference,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    Manifest.permission.CAMERA);
+        } else {
+            startScanGo(preference);
+        }
     }
 
     @Override
@@ -108,5 +129,22 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private class ScanButtonClickListener implements View.OnClickListener {
+
+        private int preference;
+
+        public ScanButtonClickListener(int preference) {
+            this.preference = preference;
+        }
+
+        public ScanButtonClickListener() {
+        }
+
+        @Override
+        public void onClick(View v) {
+            startScan(preference);
+        }
     }
 }
